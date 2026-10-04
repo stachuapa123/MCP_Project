@@ -5,7 +5,7 @@ from mcp import Client
 
 from step1_agent import TOOLS
 from step2_server import mcp
-from step3_mcp_agent import call_mcp_tool, mcp_tool_to_claude
+from step3_mcp_agent import call_mcp_tool, mcp_tool_to_dict
 
 
 def run(fn):
@@ -20,9 +20,9 @@ def test_server_lists_same_tools_as_step1():
     assert {t.name for t in listed.tools} == {t["name"] for t in TOOLS}
 
 
-def test_tools_convert_to_claude_format():
+def test_tools_convert_to_model_format():
     listed = run(lambda c: c.list_tools())
-    add = next(mcp_tool_to_claude(t) for t in listed.tools if t.name == "add")
+    add = next(mcp_tool_to_dict(t) for t in listed.tools if t.name == "add")
     assert add["description"] == "Add two numbers: a + b."
     assert add["input_schema"]["required"] == ["a", "b"]
 

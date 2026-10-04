@@ -1,20 +1,24 @@
-"""Step 1: give Claude tools directly, with no MCP involved.
+"""Step 1: give the model tools directly, with no MCP involved.
 
 Run:  python step1_agent.py "What is (17 * 23) + sqrt(144)?"
+(Uses Claude by default. Set LLM_PROVIDER=gemini in .env to use Gemini.)
 
 What to notice:
-  1. TOOLS describes each function to Claude as JSON Schema. Claude never sees
-     the Python code, only the name, description and input schema.
-  2. Claude does not run anything. It replies with a `tool_use` block that says
-     "please call `multiply` with a=17, b=23". *Our* code runs the function.
-  3. We send the answer back as a `tool_result` and ask again. Repeating that
-     until Claude stops asking for tools is the "agent loop".
+  1. TOOLS describes each function to the model as JSON Schema. The model never
+     sees the Python code, only the name, description and input schema.
+  2. The model does not run anything. It replies "please call `multiply` with
+     a=17, b=23". *Our* code runs the function.
+  3. We send the answer back and ask again. Repeating that until the model
+     stops asking for tools is the "agent loop".
+
+How each provider formats tools and messages is in chat_claude.py and
+chat_gemini.py. The loop below is the same for both.
 """
 
 import sys
 
 import calculator
-from claude_client import ask_claude
+from llm import ToolResult, make_chat
 
 
 def number_tool(name: str, description: str, *params: str) -> dict:
@@ -30,7 +34,7 @@ def number_tool(name: str, description: str, *params: str) -> dict:
     }
 
 
-# What Claude is told about each tool.
+# What the model is told about each tool.
 TOOLS = [
     number_tool("add", "Add two numbers: a + b.", "a", "b"),
     number_tool("subtract", "Subtract two numbers: a - b.", "a", "b"),
@@ -58,40 +62,26 @@ def run_tool(name: str, args: dict) -> tuple[str, bool]:
     try:
         return str(FUNCTIONS[name](**args)), False
     except (ValueError, TypeError) as e:
-        # Errors go back to Claude as a result, so it can recover or explain.
+        # Errors go back to the model as a result, so it can recover or explain.
         return str(e), True
 
 
 def run_agent(question: str, max_turns: int = 10) -> str:
-    messages = [{"role": "user", "content": question}]
+    chat = make_chat(TOOLS)
+    reply = chat.send(question)
 
     for _ in range(max_turns):
-        response = ask_claude(messages, TOOLS)
+        if not reply.tool_calls:
+            return reply.text  # no tools requested: this is the final answer
 
-        if response.stop_reason == "refusal":
-            return "Claude declined this request."
-
-        # Keep Claude's whole reply (text + tool_use blocks) in the history.
-        messages.append({"role": "assistant", "content": response.content})
-
-        tool_calls = [block for block in response.content if block.type == "tool_use"]
-        if not tool_calls:
-            # No tools requested: this is the final answer.
-            return "".join(block.text for block in response.content if block.type == "text")
-
-        # Claude may ask for several tools at once. Run them all and send every
-        # result back in a single user message.
+        # The model may ask for several tools at once. Run them all and send
+        # every result back together.
         results = []
-        for call in tool_calls:
-            output, is_error = run_tool(call.name, call.input)
-            print(f"  [tool] {call.name}({call.input}) -> {output}")
-            results.append({
-                "type": "tool_result",
-                "tool_use_id": call.id,  # ties this result to Claude's request
-                "content": output,
-                "is_error": is_error,
-            })
-        messages.append({"role": "user", "content": results})
+        for call in reply.tool_calls:
+            output, is_error = run_tool(call.name, call.args)
+            print(f"  [tool] {call.name}({call.args}) -> {output}")
+            results.append(ToolResult(call, output, is_error))
+        reply = chat.send_tool_results(results)
 
     return "Stopped: too many tool-calling turns."
 
