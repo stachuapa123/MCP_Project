@@ -1,7 +1,7 @@
 """Step 1: give the model tools directly, with no MCP involved.
 
 Run:  python step1_agent.py "What is (17 * 23) + sqrt(144)?"
-(Uses Claude by default. Set LLM_PROVIDER=gemini in .env to use Gemini.)
+(Uses Claude by default. Set LLM_PROVIDER=gemini or ollama in .env to switch.)
 
 What to notice:
   1. TOOLS describes each function to the model as JSON Schema. The model never
@@ -11,8 +11,8 @@ What to notice:
   3. We send the answer back and ask again. Repeating that until the model
      stops asking for tools is the "agent loop".
 
-How each provider formats tools and messages is in chat_claude.py and
-chat_gemini.py. The loop below is the same for both.
+How each provider formats tools and messages is in chat_claude.py,
+chat_gemini.py and chat_ollama.py. The loop below is the same for all of them.
 """
 
 import sys

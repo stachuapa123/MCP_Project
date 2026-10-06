@@ -31,7 +31,7 @@ a server "what tools do you have?" (`list_tools`) and "run this one"
 agent, Claude Code, Claude Desktop and others.
 
 ```
-  Claude or Gemini  ◄──►  your agent (MCP client)  ◄── stdio ──►  MCP server (calculator)
+  Claude / Gemini / Ollama  ◄──►  your agent (MCP client)  ◄── stdio ──►  MCP server (calculator)
 ```
 
 ## The project in three steps
@@ -42,8 +42,8 @@ agent, Claude Code, Claude Desktop and others.
 | `step1_agent.py` | Tools described by hand in JSON Schema, plus the agent loop. |
 | `step2_server.py` | The same functions exposed as an MCP server. The schemas are generated from type hints. |
 | `step3_mcp_agent.py` | The step 1 loop, except the tools come from the MCP server. |
-| `llm.py` | Picks the model (Claude or Gemini) and defines the small interface both agents use. |
-| `chat_claude.py`, `chat_gemini.py` | How each provider formats tools, tool calls and results. Compare them side by side. |
+| `llm.py` | Picks the model (Claude, Gemini or Ollama) and defines the small interface both agents use. |
+| `chat_claude.py`, `chat_gemini.py`, `chat_ollama.py` | How each provider formats tools, tool calls and results. Compare them side by side. |
 | `tests/` | Tests for every step. No API key needed. |
 
 Read the files in that order. Each one starts with a docstring that points out
@@ -62,37 +62,56 @@ pytest                           # the tests don't need an API key
 
 ### API key and choice of model
 
-The agents work with **Claude** or **Gemini**. Copy the example settings file
-and fill in the key for the one you want:
+The agents work with **Claude**, **Gemini** or a local model through
+**Ollama**. Copy the example settings file and fill in what the one you want
+needs:
 
 ```bash
 cp .env.example .env
 ```
 
 ```
-LLM_PROVIDER=claude              # or: gemini
+LLM_PROVIDER=claude              # or: gemini, ollama
 ANTHROPIC_API_KEY=sk-ant-...     # for Claude: https://console.anthropic.com
 GEMINI_API_KEY=...               # for Gemini: https://aistudio.google.com/apikey
 ```
 
-You only need the key for the provider you pick. Gemini has a free tier, so
-it's an easy way to start. The scripts read `.env` automatically.
+You only need the key for the provider you pick. Gemini has a free tier, and
+Ollama needs no key at all. The scripts read `.env` automatically.
+
+### Running a local model with Ollama
+
+[Ollama](https://ollama.com) runs open models on your own computer: free,
+offline, and nothing leaves your machine.
+
+1. Install Ollama from https://ollama.com and start it.
+2. Download a model that can use tools: `ollama pull qwen3`
+3. Set `LLM_PROVIDER=ollama` in `.env`.
+
+Any model with the "tools" tag on https://ollama.com/search?c=tools works.
+Set `OLLAMA_MODEL` to use a different one. Small models are noticeably worse
+at using tools than Claude or Gemini, which is interesting to watch: try
+the same question on each and compare.
 
 **Never commit `.env`.** It holds your secret keys. It's already in
 `.gitignore`, so git ignores it. If a key ever ends up on GitHub, delete it in
 the provider's console and create a new one.
 
-### Claude vs Gemini
+### Claude vs Gemini vs Ollama
 
-The agent loop is identical for both. Only the format details differ:
+The agent loop is identical for all three. Only the format details differ:
 
-| Idea | Claude | Gemini |
-|---|---|---|
-| Describing a tool | `{"name", "description", "input_schema"}` | `FunctionDeclaration(name, description, parameters_json_schema)` |
-| Model asks for a tool | `tool_use` block in `response.content` | `response.function_calls` |
-| Sending the result back | `tool_result` block with `tool_use_id` | `FunctionResponse` with `id` and `name` |
-| Reporting an error | `is_error: True` | Inside the response, e.g. `{"error": "..."}` |
-| Message history | `messages`, roles `user` / `assistant` | `contents`, roles `user` / `model` |
+| Idea | Claude | Gemini | Ollama |
+|---|---|---|---|
+| Describing a tool | `{"name", "description", "input_schema"}` | `FunctionDeclaration(name, description, parameters_json_schema)` | `{"type": "function", "function": {"name", "description", "parameters"}}` |
+| Model asks for a tool | `tool_use` block in `response.content` | `response.function_calls` | `response.message.tool_calls` |
+| Sending the result back | `tool_result` block with `tool_use_id` | `FunctionResponse` with `id` and `name` | A `"tool"` message with `tool_name` |
+| Reporting an error | `is_error: True` | Inside the response, e.g. `{"error": "..."}` | In the text, e.g. `"Error: ..."` |
+| System prompt | `system=` parameter | `system_instruction` in the config | The first message, with role `system` |
+| Message history | `messages`, roles `user` / `assistant` | `contents`, roles `user` / `model` | `messages`, roles `user` / `assistant` / `tool` |
+
+Ollama's tool format is the same one OpenAI uses, so `chat_ollama.py` is
+also a good starting point for an OpenAI version.
 
 The MCP server (step 2) doesn't change at all when you switch models. MCP
 servers don't know which model is on the other side.
@@ -150,8 +169,9 @@ npx @modelcontextprotocol/inspector python step2_server.py
    manual version.
 7. **HTTP transport.** Run the server over HTTP instead of stdio, so a client
    on another machine can reach it.
-8. **Another provider.** Add `chat_openai.py` or a local model through Ollama.
-   You only need to write one class with `send` and `send_tool_results`.
+8. **Another provider.** Add `chat_openai.py`. You only need to write one
+   class with `send` and `send_tool_results`, and `chat_ollama.py` already
+   uses the same tool format.
 
 ## Links
 
@@ -159,3 +179,4 @@ npx @modelcontextprotocol/inspector python step2_server.py
 - MCP Python SDK: https://github.com/modelcontextprotocol/python-sdk
 - Claude tool use guide: https://docs.claude.com/en/docs/agents-and-tools/tool-use/overview
 - Gemini function calling guide: https://ai.google.dev/gemini-api/docs/function-calling
+- Ollama Python library (with tool-calling examples): https://github.com/ollama/ollama-python

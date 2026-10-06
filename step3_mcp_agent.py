@@ -1,7 +1,7 @@
 """Step 3: an agent that gets its tools from the MCP server in step 2.
 
 Run:  python step3_mcp_agent.py "What is 2 to the power of 10, divided by 4?"
-(Uses Claude by default. Set LLM_PROVIDER=gemini in .env to use Gemini.)
+(Uses Claude by default. Set LLM_PROVIDER=gemini or ollama in .env to switch.)
 
 The agent loop is the same as in step 1. Only two things changed:
   1. The tool list is not written here. We ask the MCP server for it
@@ -10,7 +10,7 @@ The agent loop is the same as in step 1. Only two things changed:
      the request to the server (call_tool) and pass its answer back.
 
 So this agent knows nothing about calculators, and the server knows nothing
-about Claude or Gemini. Point the agent at a different MCP server and it gets
+about which model is used. Point the agent at a different MCP server and it gets
 different tools with no code changes.
 """
 

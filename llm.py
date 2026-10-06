@@ -1,4 +1,4 @@
-"""Pick which model the agents talk to: Claude or Gemini.
+"""Pick which model the agents talk to: Claude, Gemini or a local Ollama model.
 
 Both agents (step 1 and step 3) only use what is in this file:
 
@@ -7,10 +7,10 @@ Both agents (step 1 and step 3) only use what is in this file:
     reply = chat.send_tool_results(...)  # -> Reply
 
 Each provider stores its tools and its message history in its own format
-(see chat_claude.py and chat_gemini.py). Put them side by side to see that
-the ideas are the same and only the field names differ.
+(see chat_claude.py, chat_gemini.py and chat_ollama.py). Put them side by
+side to see that the ideas are the same and only the field names differ.
 
-Choose the provider in .env with LLM_PROVIDER=claude (default) or gemini.
+Choose the provider in .env with LLM_PROVIDER=claude (default), gemini or ollama.
 """
 
 import os
@@ -59,4 +59,7 @@ def make_chat(tools: list[dict]):
     if provider == "gemini":
         from chat_gemini import GeminiChat
         return GeminiChat(tools)
-    raise ValueError(f"Unknown LLM_PROVIDER {provider!r}: use 'claude' or 'gemini'.")
+    if provider == "ollama":
+        from chat_ollama import OllamaChat
+        return OllamaChat(tools)
+    raise ValueError(f"Unknown LLM_PROVIDER {provider!r}: use 'claude', 'gemini' or 'ollama'.")

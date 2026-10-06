@@ -90,3 +90,42 @@ def test_gemini_errors_go_in_the_response():
     call = SimpleNamespace(id="fc_1", name="divide")
     chat.send_tool_results([ToolResult(call, "Cannot divide by zero.", is_error=True)])
     assert sent[-1].parts[0].function_response.response == {"error": "Cannot divide by zero."}
+
+
+def test_ollama_chat():
+    """Uses a fake Ollama server, so the real request and response formats are checked."""
+    import json
+
+    import httpx
+    import ollama
+
+    from chat_ollama import OllamaChat
+
+    requests = []
+
+    def fake_ollama_server(request):
+        body = json.loads(request.content)
+        requests.append(body)
+        if len(body["messages"]) == 2:  # system + question: ask for a tool
+            message = {"role": "assistant", "content": "", "tool_calls": [
+                {"function": {"name": "multiply", "arguments": {"a": 17, "b": 23}}},
+            ]}
+        else:
+            message = {"role": "assistant", "content": f"It is {body['messages'][-1]['content']}."}
+        return httpx.Response(200, json={"model": "qwen3", "message": message, "done": True})
+
+    chat = OllamaChat(TOOLS)
+    chat.client = ollama.Client(transport=httpx.MockTransport(fake_ollama_server))
+
+    reply = chat.send("17 * 23?")
+    [call] = reply.tool_calls
+    assert (call.name, call.args) == ("multiply", {"a": 17, "b": 23})
+    tool = requests[0]["tools"][0]["function"]
+    assert (tool["name"], tool["parameters"]["required"]) == ("add", ["a", "b"])
+
+    reply = chat.send_tool_results([ToolResult(call, "391")])
+    assert reply.text == "It is 391."
+    assert requests[1]["messages"][-1] == {"role": "tool", "tool_name": "multiply", "content": "391"}
+
+    chat.send_tool_results([ToolResult(call, "Cannot divide by zero.", is_error=True)])
+    assert requests[2]["messages"][-1]["content"] == "Error: Cannot divide by zero."
