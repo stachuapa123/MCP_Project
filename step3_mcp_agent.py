@@ -19,7 +19,8 @@ import sys
 import anyio
 from mcp import Client, StdioServerParameters
 
-from llm import ToolResult, make_chat
+import transcript
+from llm import ToolResult, make_chat, provider_name
 
 # How to start the server: run step2_server.py with the same Python as this script.
 SERVER = StdioServerParameters(command=sys.executable, args=["step2_server.py"])
@@ -37,14 +38,20 @@ def mcp_tool_to_dict(tool) -> dict:
 async def call_mcp_tool(mcp_client: Client, name: str, args: dict) -> tuple[str, bool]:
     """Ask the MCP server to run a tool. Returns (result text, is_error)."""
     result = await mcp_client.call_tool(name, args)
+    transcript.log("mcp_call_tool", {"request": {"name": name, "arguments": args}, "result": result})
     text = "\n".join(block.text for block in result.content if block.type == "text")
     return text, result.is_error
 
 
 async def run_agent(question: str, server=SERVER, max_turns: int = 10) -> str:
+    folder = transcript.start(f"step3_{provider_name()}")
+    print(f"  [log] saving everything to {folder}/")
+    transcript.log("question", {"question": question})
+
     # `async with` starts the server process and shuts it down when we're done.
     async with Client(server) as mcp_client:
         listed = await mcp_client.list_tools()
+        transcript.log("mcp_list_tools", listed)
         tools = [mcp_tool_to_dict(t) for t in listed.tools]
         print(f"  [mcp] server offers: {', '.join(t['name'] for t in tools)}")
 
@@ -53,6 +60,7 @@ async def run_agent(question: str, server=SERVER, max_turns: int = 10) -> str:
 
         for _ in range(max_turns):
             if not reply.tool_calls:
+                transcript.log("final_answer", {"answer": reply.text})
                 return reply.text
 
             results = []

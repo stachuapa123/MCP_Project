@@ -1,10 +1,12 @@
 """Talking to Gemini. Needs GEMINI_API_KEY (get one at https://aistudio.google.com/apikey)."""
 
 import os
+import time
 
 from google import genai
 from google.genai import types
 
+import transcript
 from llm import SYSTEM_PROMPT, Reply, ToolCall, ToolResult
 
 # Check Google's docs for the current model names and set GEMINI_MODEL to change it.
@@ -47,9 +49,11 @@ class GeminiChat:
         return self._ask()
 
     def _ask(self) -> Reply:
-        response = self.client.models.generate_content(
-            model=MODEL, contents=self.contents, config=self.config
-        )
+        request = dict(model=MODEL, contents=self.contents, config=self.config)
+        transcript.log("llm_request", request)
+        started = time.monotonic()
+        response = self.client.models.generate_content(**request)
+        transcript.log("llm_response", {"seconds": round(time.monotonic() - started, 2), "response": response})
         if not response.candidates:
             return Reply(text="Gemini returned no answer (the request may have been blocked).")
 

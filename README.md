@@ -44,6 +44,7 @@ agent, Claude Code, Claude Desktop and others.
 | `step3_mcp_agent.py` | The step 1 loop, except the tools come from the MCP server. |
 | `llm.py` | Picks the model (Claude, Gemini or Ollama) and defines the small interface both agents use. |
 | `chat_claude.py`, `chat_gemini.py`, `chat_ollama.py` | How each provider formats tools, tool calls and results. Compare them side by side. |
+| `transcript.py` | Saves every request, response and tool call of a run to `logs/`. |
 | `tests/` | Tests for every step. No API key needed. |
 
 Read the files in that order. Each one starts with a docstring that points out
@@ -135,6 +136,37 @@ Answer: (17 × 23) + √144 = 403
 ```
 
 Try asking it to divide by zero and see how it handles the error.
+
+### See every detail: the transcripts folder
+
+Every run saves the whole conversation to its own folder in `logs/`:
+
+```
+logs/2026-10-06_14-03-22_step3_ollama/
+    transcript.md              <- everything in order, easiest to read
+    01_question.json
+    02_mcp_list_tools.json     <- what the MCP server said it offers
+    03_llm_request.json        <- exactly what was sent to the model
+    04_llm_response.json       <- exactly what came back, with token counts
+    05_mcp_call_tool.json      <- the tool call sent to the server, and its result
+    ...
+    11_final_answer.json
+```
+
+Things worth looking for:
+
+- **The model has no memory.** Each `llm_request` contains the *whole*
+  conversation so far: system prompt, tool list, question, every tool call
+  and result. Compare two requests to see it grow.
+- **Tool definitions are just text in the request.** Look at the `tools`
+  field: that's all the model knows about your functions.
+- **Token counts** are in each `llm_response`, so you can see what each step
+  costs (`usage` for Claude, `usageMetadata` for Gemini, `prompt_eval_count`
+  and `eval_count` for Ollama).
+- **Each provider's format** is visible as-is, matching the comparison table
+  above.
+
+`logs/` is in `.gitignore`, so transcripts stay on your computer.
 
 ### Use your server from other MCP apps
 

@@ -10,9 +10,11 @@ model ignores the tools or calls them wrongly, try a bigger one.
 """
 
 import os
+import time
 
 import ollama
 
+import transcript
 from llm import SYSTEM_PROMPT, Reply, ToolCall, ToolResult
 
 # Any model tagged "tools" on https://ollama.com/search?c=tools works.
@@ -58,8 +60,12 @@ class OllamaChat:
         return self._ask()
 
     def _ask(self) -> Reply:
+        request = dict(model=MODEL, messages=self.messages, tools=self.tools)
+        transcript.log("llm_request", request)
+        started = time.monotonic()
         # If Ollama isn't running, this raises a ConnectionError that says so.
-        response = self.client.chat(model=MODEL, messages=self.messages, tools=self.tools)
+        response = self.client.chat(**request)
+        transcript.log("llm_response", {"seconds": round(time.monotonic() - started, 2), "response": response})
 
         # Keep the model's whole reply (text + tool calls) in the history.
         self.messages.append(response.message)

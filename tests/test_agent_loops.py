@@ -31,3 +31,20 @@ def test_step3_loop_over_stdio(monkeypatch):
     # Starts step2_server.py as a real subprocess, just like running step 3 by hand.
     monkeypatch.setattr(step3_mcp_agent, "make_chat", lambda tools: FakeChat("power", {"base": 2, "exponent": 10}))
     assert anyio.run(step3_mcp_agent.run_agent, "2^10?") == "It is 1024.0."
+
+
+def test_step3_saves_a_transcript(monkeypatch, tmp_path):
+    monkeypatch.setenv("TRANSCRIPTS_DIR", str(tmp_path))
+    monkeypatch.setattr(step3_mcp_agent, "make_chat", lambda tools: FakeChat("power", {"base": 2, "exponent": 10}))
+    anyio.run(step3_mcp_agent.run_agent, "2^10?")
+
+    [folder] = tmp_path.iterdir()
+    files = sorted(p.name for p in folder.iterdir())
+    assert files == [
+        "01_question.json",
+        "02_mcp_list_tools.json",
+        "03_mcp_call_tool.json",
+        "04_final_answer.json",
+        "transcript.md",
+    ]
+    assert '"isError": false' in (folder / "03_mcp_call_tool.json").read_text()

@@ -50,8 +50,12 @@ class Reply:
     tool_calls: list[ToolCall] = field(default_factory=list)
 
 
+def provider_name() -> str:
+    return os.environ.get("LLM_PROVIDER", "claude").lower()
+
+
 def make_chat(tools: list[dict]):
-    provider = os.environ.get("LLM_PROVIDER", "claude").lower()
+    provider = provider_name()
     # Imported here so you only need the library for the provider you use.
     if provider == "claude":
         from chat_claude import ClaudeChat

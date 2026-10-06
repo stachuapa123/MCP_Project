@@ -18,7 +18,8 @@ chat_gemini.py and chat_ollama.py. The loop below is the same for all of them.
 import sys
 
 import calculator
-from llm import ToolResult, make_chat
+import transcript
+from llm import ToolResult, make_chat, provider_name
 
 
 def number_tool(name: str, description: str, *params: str) -> dict:
@@ -67,11 +68,16 @@ def run_tool(name: str, args: dict) -> tuple[str, bool]:
 
 
 def run_agent(question: str, max_turns: int = 10) -> str:
+    folder = transcript.start(f"step1_{provider_name()}")
+    print(f"  [log] saving everything to {folder}/")
+    transcript.log("question", {"question": question})
+
     chat = make_chat(TOOLS)
     reply = chat.send(question)
 
     for _ in range(max_turns):
         if not reply.tool_calls:
+            transcript.log("final_answer", {"answer": reply.text})
             return reply.text  # no tools requested: this is the final answer
 
         # The model may ask for several tools at once. Run them all and send
@@ -80,6 +86,7 @@ def run_agent(question: str, max_turns: int = 10) -> str:
         for call in reply.tool_calls:
             output, is_error = run_tool(call.name, call.args)
             print(f"  [tool] {call.name}({call.args}) -> {output}")
+            transcript.log("tool_run", {"call": call, "output": output, "is_error": is_error})
             results.append(ToolResult(call, output, is_error))
         reply = chat.send_tool_results(results)
 

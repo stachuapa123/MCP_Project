@@ -1,9 +1,11 @@
 """Talking to Claude. Needs ANTHROPIC_API_KEY (get one at https://console.anthropic.com)."""
 
 import os
+import time
 
 import anthropic
 
+import transcript
 from llm import SYSTEM_PROMPT, Reply, ToolCall, ToolResult
 
 MODEL = os.environ.get("CLAUDE_MODEL", "claude-opus-5-5")
@@ -36,7 +38,7 @@ class ClaudeChat:
         return self._ask()
 
     def _ask(self) -> Reply:
-        response = self.client.beta.messages.create(
+        request = dict(
             model=MODEL,
             max_tokens=16000,
             system=SYSTEM_PROMPT,
@@ -47,6 +49,10 @@ class ClaudeChat:
             betas=["server-side-fallback-2026-07-01"],
             fallbacks="default",
         )
+        transcript.log("llm_request", request)
+        started = time.monotonic()
+        response = self.client.beta.messages.create(**request)
+        transcript.log("llm_response", {"seconds": round(time.monotonic() - started, 2), "response": response})
         if response.stop_reason == "refusal":
             return Reply(text="Claude declined this request.")
 
