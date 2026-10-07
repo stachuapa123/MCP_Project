@@ -56,7 +56,7 @@ def power(base: float, exponent: float) -> float:
     return calculator.power(base, exponent)
 
 @mcp.tool()
-def factorial(x: float):
+def factorial(x: int):
     try:
         return calculator.factorial(x)
     except ValueError as e:
@@ -66,7 +66,7 @@ def factorial(x: float):
 
 
 @mcp.tool()
-def sqrt(x: float) -> float:
+def sqrt(x: int) -> int:
     """Square root of x. x must not be negative."""
     try:
         return calculator.sqrt(x)
