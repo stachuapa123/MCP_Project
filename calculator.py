@@ -40,3 +40,8 @@ def sqrt(x: float) -> float:
     if x < 0:
         raise ValueError("Cannot take the square root of a negative number.")
     return math.sqrt(x)
+
+def factorial(x: float) -> float:
+    if x < 0:
+        raise ValueError("Cannot take factorial of a negative number")
+    return math.factorial(x)

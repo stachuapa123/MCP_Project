@@ -74,6 +74,6 @@ async def run_agent(question: str, server=SERVER, max_turns: int = 10) -> str:
 
 
 if __name__ == "__main__":
-    question = " ".join(sys.argv[1:]) or "What is 2 to the power of 10, divided by 4?"
+    question = " ".join(sys.argv[1:]) or "What is 3.12^0.78 + 5!"
     print(f"Question: {question}")
     print(f"Answer: {anyio.run(run_agent, question)}")

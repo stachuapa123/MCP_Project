@@ -43,6 +43,7 @@ TOOLS = [
     number_tool("divide", "Divide two numbers: a / b. b must not be 0.", "a", "b"),
     number_tool("power", "Raise base to exponent: base ** exponent.", "base", "exponent"),
     number_tool("sqrt", "Square root of x. x must not be negative.", "x"),
+    number_tool("factorial", "x must not be negative", "x")
 ]
 
 # Which Python function actually runs for each tool name.
@@ -53,6 +54,7 @@ FUNCTIONS = {
     "divide": calculator.divide,
     "power": calculator.power,
     "sqrt": calculator.sqrt,
+    "factorial": calculator.factorial
 }
 
 

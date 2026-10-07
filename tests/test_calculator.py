@@ -10,6 +10,7 @@ def test_basic_operations():
     assert calculator.divide(9, 3) == 3
     assert calculator.power(2, 10) == 1024
     assert calculator.sqrt(144) == 12
+    assert calculator.factorial(5) == 120
 
 
 def test_divide_by_zero():
@@ -20,3 +21,6 @@ def test_divide_by_zero():
 def test_sqrt_of_negative():
     with pytest.raises(ValueError, match="negative"):
         calculator.sqrt(-1)
+
+if __name__ == "__main__":
+    test_basic_operations()

@@ -55,6 +55,15 @@ def power(base: float, exponent: float) -> float:
     """Raise base to exponent: base ** exponent."""
     return calculator.power(base, exponent)
 
+@mcp.tool()
+def factorial(x: float):
+    try:
+        return calculator.factorial(x)
+    except ValueError as e:
+        # ToolError sends our message to the client. Any other exception is
+        # reported only as a generic "Error executing tool".
+        raise ToolError(str(e)) from e
+
 
 @mcp.tool()
 def sqrt(x: float) -> float:
